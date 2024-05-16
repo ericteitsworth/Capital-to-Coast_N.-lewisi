@@ -1,10 +1,10 @@
-#Eric Teitsworth
-#12/22/2020
+#Capital to Coast: Primary Drivers of Distribution in the Secretive and Data-Limited 
+# Neuse River Waterdog (Necturus lewisi)
+#Teitsworth, E.W, W.J. Humphries, J.M. Archambault, & K. Pacifici
 
-#This script is a cleaned version of all the code leading up to this "final" analysis.
-#Occupancy model using detection data from 2018-2019 and 2019-2020 sample
+#Single-season occupancy model using detection data from 2018-2019 and 2019-2020 sample
 #seasons. Occupancy covariates are land uses, binned distances to potential pollution
-#sources, benthic rating, distance to dams, and metrics associated with channel 
+#sources, benthic ratings, distance to dams, and metrics associated with channel 
 #stability. Detection covariates are daily temperature and precipitation.
 
 rm(list=ls())
@@ -16,14 +16,15 @@ library(ggplot2)
 library(unmarked)
 library(AICcmodavg)
 library(MuMIn)
-library(corrplot)
 
 #test for correlations in covariates
 source("http://www.sthda.com/upload/rquery_cormat.r")
 
-# Det.data can be 0 or 1 and from 8 Visits
+#Some definitions
+# Det.data can be 0 (not detected) or 1 (detected) from 8 Visits
 #HAiFLS = Hydroactive inverse Flow to Stream. This is given 
-# as a proportion of the watershed, clipped to exclude everything upstream of dams. 
+# as a proportion of the watershed, clipped to exclude everything upstream of dams.
+
 det.data<-read.csv("cap_hist19_20.csv",header=TRUE)
 surv.cov2<-read.csv("samp_cov3.csv",header=TRUE) #long format # values on day prior to capture
 site.cov<-read.csv('site_covs19_20.csv',header=TRUE)
@@ -35,13 +36,13 @@ HAiFLSf<-site.cov[, (6)] #forested LULC
 HAiFLSg<-site.cov[, (7)] #grass/pasture LULC
 HAiFLSc<-site.cov[, (8)] #crop LULC
 HAiFLSw<-site.cov[, (9)] #wetland LULC
-benthic<-site.cov[, (11)] #DEQ benthic rating
+benthic<-site.cov[, (11)] #NCDEQ benthic rating
 UpDamBin<-site.cov[, (12)] #binned distance to upstream dam
 DownDamBin<-site.cov[, (13)] #binned distance to downstream dam
-NPDES<-site.cov[, (17)] #number of NPDES sites in watershed/area=proportional number
-stage<-site.cov[, (22)] #score 1-6 as measure of modification
+NPDES<-site.cov[, (17)] #number of NPDES sites in watershed/area
+stage<-site.cov[, (22)] #score 1-6 as measure of human modification with 6 being maximum
 stage2<-stage^2
-substrate<- site.cov[, (23)] #categorical: dominant substrate at location
+substrate<- site.cov[, (23)] #dominant substrate at location
 
 
 #Survey
@@ -107,8 +108,8 @@ ss<- substitute((dc("psi(HAiFLSd)"+"psi(HAiFLSw)", "psi(HAiFLSd*HAiFLSw)")) #req
                 & !("p(s2)" && "p(precip2)")
                 & (sum(x) < N), list(N = 2, x = as.call(lapply(c("c", x), as.symbol)))) #only allows 1 interaction per fit model
 
-# More than 8 terms per model (plus 
-# intercepts) would produce NaNs with the number of base terms I have 
+# NOTE: More than 8 terms per model (plus 
+# intercepts) produces NaNs with the number of base terms I have 
 # chosen to include in the global model. 
 
 ddc<- dredge(global.model, rank = "AICc", m.lim= c(0,8), subset = ss)
@@ -125,7 +126,7 @@ predict.det<-predict(modavg.dd, type="det", se.fit=TRUE, backTransform=TRUE)
 write.csv(pmodavg, file = "D:/NCSU/R/19_20Season Analysis/pmodavg_ch1.csv")
 write.csv(predict.det, file = "D:/NCSU/R/19_20Season Analysis/predictdet_ch1.csv")
 
-####Predicting Effect of Pasture########
+####Plotting Effect of Pasture########
 newdata<-with(site.cov,
               data.frame(HAiFLSg = seq(from = min(site.cov$HAiFLSg), #xaxis variable
                                        to = max(site.cov$HAiFLSg), length.out=116),
@@ -161,7 +162,7 @@ ggplot(data=newdata, aes(HAiFLSg, y=fit)) +
   theme_classic(base_size = 12) +
   geom_ribbon(aes(ymin=upr, ymax=lwr), alpha=0.25)
 
-####Predicting Effect of Substrate########
+####Plotting Effect of Substrate########
 newdata<-with(site.cov,
               data.frame(substrate = rep(seq(from = 0, #xaxis variable
                          to = 3, length.out=116))),
@@ -196,7 +197,7 @@ ggplot(data=newdata, aes(substrate, y=fit)) +
         axis.title=element_text(size=12,face="bold")) +
   theme_classic(base_size = 12)
 
-####Predicting Effect of Developed########
+####Plotting Effect of Developed########
 newdata<-with(site.cov,
               data.frame(HAiFLSd = seq(from = min(site.cov$HAiFLSd), #xaxis variable
                                        to = max(site.cov$HAiFLSd), length.out=116),
@@ -232,7 +233,7 @@ ggplot(data=newdata, aes(HAiFLSd, y=fit)) +
   theme_classic(base_size = 12) +
   geom_ribbon(aes(ymin=upr, ymax=lwr), alpha=0.25)
 
-####Predicting Effect of Wetland########
+####Plotting Effect of Wetland########
 newdata<-with(site.cov,
               data.frame(HAiFLSw = seq(from = min(site.cov$HAiFLSw), #xaxis variable
                                        to = max(site.cov$HAiFLSw), length.out=116),
